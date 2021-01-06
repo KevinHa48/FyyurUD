@@ -13,6 +13,7 @@ import logging
 from logging import Formatter, FileHandler
 from flask_wtf import Form
 from forms import *
+import datetime
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -21,7 +22,7 @@ app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
 db = SQLAlchemy(app)
-migrate = Migrate(db, app)
+migrate = Migrate(app, db)
 
 # TODO: connect to a local postgresql database
 
@@ -42,8 +43,9 @@ class Venue(db.Model):
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
     website = db.Column(db.String(120))
-    talent_seek = db.Column(db.Boolean)
-    seek_description = db.Column(db.String(500))
+    seeking_talent = db.Column(db.Boolean)
+    seeking_description = db.Column(db.String(500))
+    show_id = db.Column(db.Integer, db.ForeignKey('Shows.id'))
     
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
@@ -60,12 +62,21 @@ class Artist(db.Model):
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
     website = db.Column(db.String(120))
-    venue_seek = db.Column(db.Boolean)
-    venue_seek_desc = db.Column(db.String(500))
+    seeking_venue = db.Column(db.Boolean)
+    seeking_description = db.Column(db.String(500))
+    show_id = db.Column(db.Integer, db.ForeignKey('Shows.id'))
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
+
+class Shows(db.Model):
+  __tablename__ = 'Shows'
+  id = db.Column(db.Integer, primary_key = True)
+  date_time = db.Column(db.DateTime)
+  venue = db.relationship('Venue', backref = 'shows')
+  artist = db.relationship('Artist', backref = 'shows')
+
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -97,6 +108,7 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_shows should be aggregated based on number of upcoming shows per venue.
+  
   data=[{
     "city": "San Francisco",
     "state": "CA",
@@ -118,7 +130,7 @@ def venues():
       "num_upcoming_shows": 0,
     }]
   }]
-  return render_template('pages/venues.html', areas=data);
+  return render_template('pages/venues.html', areas=data)
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
